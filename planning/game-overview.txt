@@ -1,0 +1,20 @@
+I am making a game called Mole Buster. Here is a basic overview of how I want the game to work:
+
+Setting: Grassy field with some holes.
+Game Type: Score Attack
+
+Players will spawn into a lobby where they can choose the game type they want to play.
+
+Veiw is thrid person, the players will be controlling their character as they move around the field and try to hit moles as they emerge from holes in the field, scoring points by how quickly they hit them and what kinds of moles they are.
+
+Moles will pop up out of random holes for random amounts of time, from 3 to 15 seconds. Some moles are worth a 5 points, some are 15 and some are -10.
+
+Game types: 
+Timed - Single Player. Goal is to get the most points in three minutes.
+
+Score Chase: Multiplayer. Be the first to 100 points.
+
+Vs: Multi player. Different colored moles, the moles that match your color are worth positive points, the ones that are other players colors are negative points.
+
+Persistent info on personal best high score and quickest score chase.
+Leaderboards for high score and quickest score chase.
