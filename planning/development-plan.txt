@@ -1,69 +1,120 @@
-Mole Buster - Development Plan
+Development Plan - Mole Buster
 
-Goal:
-Build a Hytopia game where players move around a grassy field and hit moles popping out of holes, with multiple game modes, scoring, and leaderboards.
+Reference docs:
+- overview.txt      (high-level game overview, modes, and goals)
+- design.txt        (mole behavior, timing, types, and scoring)
+- file_structure.txt (target file and folder layout)
 
-Phase 1 – Project & Foundation
-1. Review existing setup (index.ts, index.mjs, assets/ui/index.html, tsconfig.json) to understand current bootstrapping.
-2. Create base folder structure:
-   - src/server, src/client, src/shared
-   - content, data, docs
-3. Document overall architecture in docs/tech/architecture.md (client/server/shared, game modes, persistence).
+Phase 0 – Align with docs
+1. Read overview.txt, design.txt, and file_structure.txt end-to-end.
+2. Note any open questions in planning/questions.txt (to be created when needed).
 
-Phase 2 – Shared Contracts & Config
-4. Define shared types in src/shared/types/:
-   - GameMode, MoleType, LeaderboardEntry, PlayerProfile.
-5. Define shared config in src/shared/config/GameBalanceConfig.ts:
-   - Spawn time range (3–15s), mole type odds, per-mode tuning.
-6. Define networking contracts in src/shared/messages/:
-   - Events and payloads for MOLE_SPAWNED, MOLE_DESPAWNED, MOLE_HIT, SCORE_UPDATED, MATCH_STARTED, MATCH_ENDED, LEADERBOARD_UPDATE.
+Phase 1 – Core shared types and config
+1. Create src/shared/types/MoleType.ts based on mole types and point values from design.txt.
+2. Create src/shared/config/GameBalanceConfig.ts:
+   - Base spawn duration range (3–15 seconds).
+   - Per-mole-type spawn weights (simple defaults to start).
+3. Create src/shared/messages/Events.ts and src/shared/messages/Payloads.ts for:
+   - MOLE_SPAWNED, MOLE_DESPAWNED, MOLE_HIT, SCORE_UPDATE, MATCH_STATE_UPDATE.
 
-Phase 3 – Server Core & Mole Systems
-7. Implement server bootstrap in src/server/core/ServerBootstrap.ts and PlayerSessionManager.
-8. Implement mole entities in src/server/entities/:
-   - Mole, MoleTypes, MoleHole.
-9. Implement MoleSpawnSystem in src/server/systems/:
-   - Random spawns from holes with 3–15 second visibility, emits spawn/despawn events.
-10. Implement HitDetectionSystem and ScoringSystem:
-   - Validate hit requests, apply mole point values, update scores, emit SCORE_UPDATED.
+Phase 2 – Server-side mole and field logic
+1. Implement src/server/entities/Mole.ts:
+   - Fields: type, spawn time, despawn time, hole reference, hit state.
+   - Methods: spawn(), despawn(reason), hit(playerId).
+2. Implement src/server/entities/MoleHole.ts:
+   - Fields: position, current mole (if any).
+   - Methods: canSpawn(), assignMole(mole).
+3. Implement src/server/entities/MoleTypes.ts:
+   - Factory/lookup for mole definitions using shared MoleType and scoring from design.txt.
+4. Implement src/server/systems/MoleSpawnSystem.ts:
+   - Manage list of holes and active moles.
+   - Despawn expired moles; schedule new moles with 3–15 second durations and spawn weights.
+   - Emit spawn/despawn events using shared messages.
 
-Phase 4 – Game Modes
-11. Create game mode framework:
-   - BaseGameMode interface and GameModeRegistry.
-12. Implement TimedMode (single-player, 3-minute match).
-13. Implement ScoreChaseMode (multiplayer, race to 100 points).
-14. Implement VersusMode (multiplayer, color-based positive/negative scoring).
+Phase 3 – Scoring and hit handling
+1. Implement src/server/systems/HitDetectionSystem.ts:
+   - Receive hit requests from players.
+   - Validate target mole is visible and not already hit.
+2. Implement src/server/systems/ScoringSystem.ts:
+   - Apply scores using MoleType values from design.txt.
+   - Update per-player scores and emit SCORE_UPDATE.
+   - Prepare for Versus adjustments (positive/negative based on mole color vs player color).
 
-Phase 5 – Persistence & Leaderboards
-15. Implement ProfileService and LeaderboardService in src/server/services/.
-16. Wire persistence:
-   - Save personal best high score and quickest Score Chase.
-   - Maintain leaderboards in data/leaderboards and update clients.
+Phase 4 – Game modes (Timed, Score Chase, Versus)
+1. Create src/server/game-modes/GameMode.ts (interface/base):
+   - onPlayerJoin, onPlayerLeave, onMoleHit, update(deltaTime), isFinished().
+2. Implement src/server/game-modes/TimedMode.ts:
+   - 3-minute timer (from overview.txt).
+   - End match on timeout and produce results.
+3. Implement src/server/game-modes/ScoreChaseMode.ts:
+   - Target score 100 (from overview.txt).
+   - End match when a player reaches 100 and declare winner.
+4. Implement src/server/game-modes/VersusMode.ts:
+   - Assign colors to players.
+   - Integrate with colored moles (positive for matching color, negative otherwise, per overview.txt).
+5. Implement src/server/game-modes/GameModeRegistry.ts:
+   - Create modes by id (timed, score_chase, versus) for lobby use.
 
-Phase 6 – Client Core, UI & HUD
-17. Implement client state and networking:
-   - ClientGameState, PlayerState, network client using shared messages.
-18. Build screens:
-   - LobbyScreen (mode selection, personal bests).
-   - GameScreen (3D view + HUD).
-   - ResultsScreen (match summary, PB indicators).
-19. Build HUD components:
-   - ScoreDisplay, TimerDisplay, ModeIndicator, HitFeedback.
-20. Implement PlayerInput:
-   - Map input to hit actions, send hit requests to server.
+Phase 5 – Lobby and world setup
+1. Implement src/server/world/LobbyWorld.ts:
+   - Spawn players into lobby (as described in overview.txt).
+   - Expose mode selection interactions.
+2. Implement PlayerSessionManager.ts:
+   - Track players from lobby → match → results.
+   - Handle re-joining and disconnections where possible.
+3. Implement GameWorldFactory.ts:
+   - Instantiate game mode worlds based on lobby selections.
 
-Phase 7 – Visuals, Content & Audio
-21. Integrate field and mole models in assets/models/moles/ (standard, deluxe, penalty).
-22. Configure field layout and holes from content/maps (or assets/map.json) and spawn MoleHole entities.
-23. Hook up audio:
-   - Background music and SFX for mole pop, hit, and penalty feedback.
+Phase 6 – Client basics (view + HUD)
+1. Implement src/client/state/ClientGameState.ts:
+   - Track visible moles, scores, time, and match state using shared messages.
+2. Implement src/client/screens/GameScreen.tsx:
+   - Render main game view and integrate HUD components.
+3. Implement HUD components:
+   - src/client/hud/ScoreDisplay.tsx
+   - src/client/hud/TimerDisplay.tsx
+   - src/client/hud/ModeIndicator.tsx
+   - src/client/hud/HitFeedback.tsx
+4. Wire events (MOLE_SPAWNED, MOLE_DESPAWNED, MOLE_HIT, SCORE_UPDATE, MATCH_STATE_UPDATE) into ClientGameState and HUD.
 
-Phase 8 – Testing, Balancing & Polish
-24. Add automated tests:
-   - Server systems (mole spawning, scoring, game modes), shared config, core client UI.
-25. Balance gameplay:
-   - Tune spawn rates, mole mix, penalties via GameBalanceConfig and content/moles JSON.
-26. Polish UX and robustness:
-   - Handle disconnects/rejoins, edge cases, and improve clarity of mode rules and feedback.
+Phase 7 – Lobby, menus, and flows
+1. Implement src/client/screens/LobbyScreen.tsx:
+   - Show Timed / Score Chase / Versus.
+   - Display personal bests and fastest Score Chase when available.
+2. Implement src/client/screens/ResultsScreen.tsx:
+   - Show final scores, winner, and any new personal bests.
+3. Implement src/client/state/UiState.ts:
+   - Manage active screen (lobby, game, results) and simple transitions.
+
+Phase 8 – Persistence: profiles and leaderboards
+1. Add shared types:
+   - src/shared/types/PlayerProfile.ts
+   - src/shared/types/LeaderboardEntry.ts
+2. Implement src/server/services/ProfileService.ts:
+   - Store personal best high score (Timed) and quickest Score Chase.
+   - Save to data/profiles/ per player.
+3. Implement src/server/services/LeaderboardService.ts:
+   - Maintain high-score and quickest-score-chase leaderboards under data/leaderboards/.
+4. Integrate with game modes:
+   - On match end, update profile and leaderboards.
+   - Expose summary data to lobby and results screens.
+
+Phase 9 – Content and balancing
+1. Create content/moles/default-moles.json and content/moles/versus-moles.json:
+   - Define standard, deluxe, and penalty moles and any Versus-specific variants.
+2. Create content/maps/grassy-field.json:
+   - Hole positions and layout to match the grassy field from overview.txt.
+3. Tune GameBalanceConfig.ts and content JSON:
+   - Adjust spawn rates, mole type probabilities, and durations so the game feels fair and fun.
+
+Phase 10 – Polish and code quality
+1. Add and refine comments:
+   - Explain why systems and rules exist, not just what they do.
+2. Simplify code where possible:
+   - Small, focused functions and clear data structures.
+3. Add visual/audio polish:
+   - Use assets/models/moles and audio SFX for mole pop, hit, and penalty feedback.
+4. Run tests and playtest:
+   - Validate all three modes, scoring, and persistence behave as specified in overview.txt and design.txt.
 
 

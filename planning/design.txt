@@ -1,0 +1,20 @@
+Mole Design - Mole Buster
+
+Overview:
+- Moles appear from holes in the grassy field at random positions and random intervals.
+- Players do not jump; they move over or near holes and perform a hit action to score.
+
+Spawn Behavior:
+- Moles pop up out of random holes.
+- Each mole remains visible for a random duration between 3 and 15 seconds.
+- While visible, a mole can be hit exactly once for its full point value.
+- After being hit or timing out, the mole retreats and the hole becomes eligible for another spawn.
+
+Mole Types and Scoring:
+- Standard Mole: worth +5 points.
+- Deluxe Mole: worth +15 points (rarer spawn, visually distinct).
+- Penalty Mole: worth -10 points (discourages random spamming).
+
+Notes:
+- Exact spawn rates and type probabilities are controlled via game balance config (per game mode).
+- Versus mode will extend these rules with player-colored moles (matching color = positive, others = negative).
